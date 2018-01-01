@@ -251,6 +251,21 @@ structure_check() searches for nearby cultist structures required for the invoca
 	req_keyword = TRUE
 	var/listkey
 
+/obj/effect/dummy/tele_in
+	name = "teleport_in"
+	icon = 'icons/effects/cult_effects.dmi'
+	icon_state = "bloodin"
+	proc/end_effect()
+		del src
+
+/obj/effect/dummy/tele_out
+	name = "teleport_out"
+	icon = 'icons/effects/cult_effects.dmi'
+	icon_state = "bloodout"
+	proc/end_effect()
+		del src
+
+
 /obj/effect/rune/teleport/Initialize(mapload, set_keyword)
 	. = ..()
 	var/area/A = get_area(src)
@@ -268,7 +283,7 @@ structure_check() searches for nearby cultist structures required for the invoca
 	var/list/teleportnames = list()
 	for(var/R in GLOB.teleport_runes)
 		var/obj/effect/rune/teleport/T = R
-		if(T != src && !is_away_level(T.z))
+		if(T != src && (T.z <= ZLEVEL_SPACEMAX))
 			potential_runes[avoid_assoc_duplicate_keys(T.listkey, teleportnames)] = T
 
 	if(!potential_runes.len)
@@ -277,9 +292,8 @@ structure_check() searches for nearby cultist structures required for the invoca
 		fail_invoke()
 		return
 
-	var/turf/T = get_turf(src)
-	if(is_away_level(T.z))
-		to_chat(user, "<span class='cult italic'>You are not in the right dimension!</span>")
+	if(user.z > ZLEVEL_SPACEMAX)
+		to_chat(user, "<span class='cultitalic'>You are not in the right dimension!</span>")
 		log_game("Teleport rune failed - user in away mission")
 		fail_invoke()
 		return
@@ -290,7 +304,9 @@ structure_check() searches for nearby cultist structures required for the invoca
 		fail_invoke()
 		return
 
+	var/turf/T = get_turf(src)
 	var/turf/target = get_turf(actual_selected_rune)
+
 	if(is_blocked_turf(target, TRUE))
 		to_chat(user, "<span class='warning'>The target rune is blocked. Attempting to teleport to it would be massively unwise.</span>")
 		fail_invoke()
@@ -305,6 +321,17 @@ structure_check() searches for nearby cultist structures required for the invoca
 		if(!A.anchored)
 			movedsomething = TRUE
 			A.forceMove(target)
+	var/obj/effect/dummy/tele_in/I = new(T)
+	var/obj/effect/dummy/tele_out/O = new(target)
+	usr.invisibility = 100
+	usr.canmove = 0
+	sleep(10)
+	usr.invisibility = 0
+	usr.canmove = 1
+	I.end_effect()
+	O.end_effect()
+
+
 	if(movedsomething)
 		..()
 		visible_message("<span class='warning'>There is a sharp crack of inrushing air, and everything above the rune disappears!</span>", null, "<i>You hear a sharp crack.</i>")
